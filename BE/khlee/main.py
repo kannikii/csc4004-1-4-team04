@@ -1,6 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 import os
 from video_analyzer import analyze_video
+from feedback_generator import generate_feedback
 
 app = FastAPI()
 
@@ -27,3 +28,13 @@ async def analyze_video_api(file: UploadFile = File(...)):
     os.remove(temp_path)
 
     return {"filename": file.filename, "result": result}
+
+@app.post("/feedback/gpt")
+def feedback_api(data: dict):
+    """
+    시선/자세 분석 결과(JSON)를 입력받아 GPT 피드백 생성
+    """
+    gaze = data.get("gaze_center_ratio", 0.0)
+    posture = data.get("posture_stability", 0.0)
+    feedback = generate_feedback(gaze, posture)
+    return {"feedback": feedback}
