@@ -9,3 +9,8 @@ venv/
 
 # VSCode settings
 .vscode/
+
+# FIRESTORE DB
+serviceAccountKey.json
+*.pem
+*.p12
