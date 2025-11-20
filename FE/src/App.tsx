@@ -11,6 +11,7 @@ import { Mic, Home, User, LogOut } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './lib/firebase';
 import { getUserProfile } from './lib/firestore';
+import './index.css';
 
 type Page = 'home' | 'record' | 'results' | 'mypage' | 'auth' | 'loading' | 'scriptupload' ; // ✅ 'loading' 추가
 

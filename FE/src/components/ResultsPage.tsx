@@ -83,83 +83,57 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
         </div>
 
         {/* ===================== 1. 음성 분석 ===================== */}
-        <section className="mb-12">
-          <h2 className="text-2xl font-semibold text-white mb-4 flex items-center gap-2">
-            <Mic className="text-emerald-300" />
-            <span>음성 분석</span>
-          </h2>
+<section className="mb-12">
+  <div className="p-8 rounded-2xl  shadow-xl  backdrop-blur">
+    <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+      <Mic className="text-white" />
+      <span>음성 분석</span>
+    </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 1: 불필요한 음성 */}
-            <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
-              <h3 className="text-slate-900 text-lg font-semibold mb-2">
-                불필요한 음성
-              </h3>
-              <p className="text-emerald-600 text-3xl font-bold mb-2">
-                {voice.filler_count}회
-              </p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* 1 */}
+      <div className="p-6 rounded-xl bg-[#f0f9ff] border border-[#6ee7b7] shadow-lg">
+        <h3 className="text-slate-900 text-lg font-semibold mb-2">불필요한 음성</h3>
+        <p className="text-sky-600 text-3xl font-bold mb-2">{voice.filler_count}회</p>
 
-              {voice.filler_list?.length > 0 && (
-                <div className="text-slate-700 text-sm space-y-1 mt-2">
-                  {voice.filler_list.map((item: string, idx: number) => (
-                    <p key={idx}>• {item}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* 2: 말하기 속도 */}
-            <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
-              <h3 className="text-slate-900 text-lg font-semibold mb-2">
-                말하기 속도 (WPM)
-              </h3>
-              <p className="text-emerald-600 text-3xl font-bold">
-                {voice.wpm} wpm
-              </p>
-              <p className="text-slate-700 text-sm mt-3">
-                권장 속도는 <span className="font-semibold">140~160 wpm</span>
-                입니다.
-              </p>
-            </div>
-
-            {/* 3: 말 사이 공백 */}
-            <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
-              <h3 className="text-slate-900 text-lg font-semibold mb-2">
-                말 사이 공백
-              </h3>
-              <p className="text-emerald-600 text-3xl font-bold">
-                {voice.long_pause_count}회
-              </p>
-              <p className="text-slate-700 text-sm mt-3">
-                긴 공백은 메시지 전달 흐름을 끊을 수 있어요.{" "}
-                <span className="font-medium">중요한 포인트 전후</span>에만
-                의도적으로 사용해보세요.
-              </p>
-            </div>
-
-            {/* 4: 말끝 흐림 */}
-            <div className="p-6 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
-              <h3 className="text-slate-900 text-lg font-semibold mb-2">
-                말끝 흐림
-              </h3>
-              <p className="text-emerald-600 text-3xl font-bold mb-2">
-                {voice.hesitation_count}회
-              </p>
-
-              {voice.hesitation_list?.length > 0 && (
-                <div className="text-slate-700 text-sm space-y-1 mt-2">
-                  {voice.hesitation_list.map((item: string, idx: number) => (
-                    <p key={idx}>• {item}</p>
-                  ))}
-                </div>
-              )}
-              <p className="text-slate-700 text-sm mt-3">
-                문장을 <span className="font-medium">단정적으로 마무리</span>하면
-                더 설득력 있는 인상을 줄 수 있어요.
-              </p>
-            </div>
+        {voice.filler_list?.length > 0 && (
+          <div className="text-slate-600 text-sm space-y-1 mt-2">
+            {voice.filler_list.map((item: string, idx: number) => (
+              <p key={idx}>• {item}</p>
+            ))}
           </div>
-        </section>
+        )}
+      </div>
+
+      {/* 2 */}
+      <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+        <h3 className="text-slate-900 text-lg font-semibold mb-2">말하기 속도 (WPM)</h3>
+        <p className="text-sky-600 text-3xl font-bold">{voice.wpm} wpm</p>
+        <p className="text-slate-600 text-sm mt-2">권장 속도: 140~160 wpm</p>
+      </div>
+
+      {/* 3 */}
+      <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+        <h3 className="text-slate-900 text-lg font-semibold mb-2">말 사이 공백</h3>
+        <p className="text-sky-600 text-3xl font-bold">{voice.long_pause_count}회</p>
+      </div>
+
+      {/* 4 */}
+      <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+        <h3 className="text-slate-900 text-lg font-semibold mb-2">말끝 흐림</h3>
+        <p className="text-sky-600 text-3xl font-bold mb-2">{voice.hesitation_count}회</p>
+
+        {voice.hesitation_list?.length > 0 && (
+          <div className="text-slate-600 text-sm space-y-1 mt-2">
+            {voice.hesitation_list.map((item: string, idx: number) => (
+              <p key={idx}>• {item}</p>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
 
         {/* 줄바꿈 느낌 주는 구분선 */}
         <div className="h-px w-full bg-white/10 mb-10" />
