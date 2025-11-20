@@ -1,0 +1,33 @@
+{
+  "overallScore": 82,
+  "duration": 125,
+
+  "analysis": {
+    "voice": {
+      "wpm": 132, 
+      "long_pause_count": 3, 
+      "avg_pause_duration": 1.8,
+      "pause_events": [
+        { "start": 14.2, "end": 16.4 },
+        { "start": 45.0, "end": 47.2 },
+        { "start": 88.1, "end": 90.9 }
+      ],
+      "hesitation_count": 2, 
+      "filler_count": 4, 
+      "hesitation_list": ["음...", "어..."],
+      "filler_list": ["그니까", "약간"] 
+    },
+
+    "logic": {
+      "similarity": 86,
+      "similarity_analysis": [
+       "대본 내용 : 이 내용은 거짓임, 실제 발화 내용 : 이 내용은 참임",
+       "대본 내용 : 이 내용은 false임, 실제 발화 내용 : 이 내용은 true임"
+      ]
+    },
+
+    "video": {
+      "feedback_preview": "시선이 안정적이며 제스처 사용이 자연스럽습니다.\n표정은 긍정적으로 유지되었습니다."
+    }
+  }
+}
