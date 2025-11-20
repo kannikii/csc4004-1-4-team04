@@ -1,5 +1,31 @@
+# --- Node ---
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Build outputs ---
 dist/
 build/
+.vite/
+.vite_deps/
+
+# --- Environment files ---
 .env
+.env.* 
+
+# --- System files ---
 .DS_Store
+Thumbs.db
+
+# --- Logs ---
+logs/
+*.log
+
+# --- Editor / IDE ---
+.vscode/
+.idea/
+*.swp
+
+# --- Optional caches ---
+.cache/
