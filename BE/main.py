@@ -12,8 +12,7 @@ from stt_processor import (
     process_single_video,
     get_stt_progress,
 )
-from feedback_generator import generate_feedback_from_analysis
-from voice_feedback_api import router as voice_feedback_router, generate_combined_feedback_report
+from feedback_api import router as voice_feedback_router, generate_combined_feedback_report
 
 # Firebase (RTDB)
 import firebase_admin
@@ -133,8 +132,8 @@ async def analyze_speech_api(file: UploadFile = File(...)):
     return {"message": f"✅ STT 완료: {file.filename}", "result": stt_result}
 
 
-@app.post("/analyze/full-feedback")
-async def analyze_full_feedback_api(file: UploadFile = File(...)):
+@app.post("/analyze/upload-feedback")
+async def analyze_upload_feedback_api(file: UploadFile = File(...)):
     """
     영상·음성 동시 분석 후 OpenRouter LLM으로 통합 피드백까지 생성합니다.
     """
@@ -167,7 +166,9 @@ async def analyze_full_feedback_api(file: UploadFile = File(...)):
     feedback_payload = generate_combined_feedback_report(
         video_result=video_result,
         stt_result=stt_result,
-        output_name=f"full_feedback_{Path(original_filename).stem}.md",
+        user_id=user_id,
+        run_id=run_id,
+        original_filename=original_filename,
     )
     combined_file_path = save_combined_analysis_file(video_result, stt_result, original_filename, combined_dir)
 
@@ -207,8 +208,8 @@ async def get_progress_stream():
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
-@app.post("/feedback/full")
-def feedback_full_api(data: dict = Body(...)):
+@app.post("/feedback/from-db")
+def feedback_from_db_api(data: dict = Body(...)):
     """
     user_id와 presentation_id를 받아 RTDB에서 모든 분석 데이터를 조회,
     LLM 레포트를 생성한 뒤, 다시 RTDB에 업데이트합니다.
@@ -227,16 +228,24 @@ def feedback_full_api(data: dict = Body(...)):
 
         if not gaze_data:
             return {"message": "❌ 시선/자세 분석 데이터를 찾을 수 없습니다."}
+        if not stt_data:
+            return {"message": "❌ 음성/STT 분석 데이터를 찾을 수 없습니다."}
 
-        analysis_data_for_llm = {"result": gaze_data}
-        feedback_report = generate_feedback_from_analysis(analysis_data_for_llm)
+        feedback_payload = generate_combined_feedback_report(
+            video_result=gaze_data,
+            stt_result=stt_data,
+            user_id=user_id,
+            run_id=presentation_id,
+            original_filename=presentation_id,
+        )
 
-        db.reference(f'{db_path}/final_report').set(feedback_report)
+        db.reference(f'{db_path}/final_report').set(feedback_payload["content"])
 
         return {
-            "message": "✅ Feedback report successfully generated and saved to RTDB.",
+            "message": "✅ 영상+음성 통합 Feedback report generated and saved to RTDB.",
             "document_id": f"{user_id}/{presentation_id}",
-            "feedback_preview": feedback_report[:300] + "..."
+            "feedback_preview": feedback_payload["feedback_preview"],
+            "feedback_file": feedback_payload["file_path"],
         }
     except Exception as e:
         return {"message": f"레포트 생성/저장 실패: {str(e)}"}

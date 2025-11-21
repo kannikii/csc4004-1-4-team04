@@ -6,11 +6,40 @@ __pycache__/
 # Virtual environments
 venv/
 .env
-
+.venv
 # VSCode settings
 .vscode/
 
 # FIRESTORE DB
-BE/khlee/serviceAccountKey.json 
+BE/serviceAccountKey.json 
 *.pem
 *.p12
+BE/feedback_reports
+BE/results
+BE/video_analysis_reports
+
+# Node
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Env
+.env
+
+# Mac
+.DS_Store
+
+# FE specific
+FE/node_modules/
+FE/dist/
+FE/build/
+FE/.env
+FE/.DS_Store
+
+# BE specific
+BE/node_modules/
+BE/dist/
+BE/.env
+BE/.DS_Store
