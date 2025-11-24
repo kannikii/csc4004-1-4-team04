@@ -205,6 +205,26 @@ async def analyze_video_api(
         gaze_results = _sanitize_for_firestore(gaze_results)
         stt_results = _sanitize_for_firestore(stt_results)
 
+        # ---------------------------------------------------------
+        # 3. AI 피드백 생성 (OpenRouter LLM)
+        # ---------------------------------------------------------
+        feedback_data = {}
+        try:
+            print(f"[analyze_video] AI 피드백 생성 시작...")
+            feedback_data = generate_combined_feedback_report(
+                video_result=gaze_results,
+                stt_result=stt_results,
+                user_id=user_id,
+                run_id=base_name,
+                original_filename=file.filename
+            )
+            print(f"[analyze_video] AI 피드백 생성 완료")
+        except Exception as e:
+            print(f"⚠️ AI 피드백 생성 실패: {e}")
+
+        # ---------------------------------------------------------
+        # 4. Firestore 저장
+        # ---------------------------------------------------------
         feedback_doc = _feedback_doc(user_id, project_id, base_name)
         existing = feedback_doc.get()
         existing_data = existing.to_dict() if existing.exists else {}
@@ -218,6 +238,20 @@ async def analyze_video_api(
             "user_id": user_id,
             "presentation_id": base_name,
             "duration_sec": gaze_results.get("metadata", {}).get("duration_sec") or stt_results.get("duration_sec"),
+            
+            # AI Feedback 추가
+            "final_report": feedback_data.get("content"),
+            "final_report_preview": feedback_data.get("feedback_preview"),
+            "feedback_file": feedback_data.get("file_path"),
+            
+            # 점수 저장 (세부 항목 포함)
+            "scores": feedback_data.get("scores", {}),
+            "overallScore": (
+                feedback_data.get("scores", {}).get("voice", 0) + 
+                feedback_data.get("scores", {}).get("video", 0) + 
+                feedback_data.get("scores", {}).get("logic", 20)
+            ),
+            
             "created_at": created_at_value,
             "updated_at": firestore.SERVER_TIMESTAMP,
         }
@@ -227,15 +261,17 @@ async def analyze_video_api(
         except Exception as e:
             print(f"❌ Firestore 업로드 실패: {e}")
             print(f"payload keys: {list(payload.keys())}")
-            print(f"vision_analysis keys: {list(payload.get('vision_analysis', {}).keys())}")
 
         return {
             "message": "시선/자세 및 STT 분석 완료. Firestore 저장 성공.",
             "user_id": user_id,
             "project_id": project_id,
-            "presentation_id": base_name,  # 이 ID로 /feedback/from-db 호출
+            "presentation_id": base_name,
             "video_result": gaze_results,
             "stt_result": stt_results,
+            # 프론트엔드 즉시 반영을 위해 피드백 데이터 포함
+            "final_report": feedback_data.get("content"),
+            "final_report_preview": feedback_data.get("feedback_preview"),
         }
 
     except Exception as e:

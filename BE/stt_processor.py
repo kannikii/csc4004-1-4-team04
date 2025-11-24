@@ -397,14 +397,33 @@ def analyze_voice_rhythm_and_patterns(stt_result_data: dict) -> dict:
 
     speech_patterns_result = analyze_speech_patterns_with_gpt(full_text)
 
+    # GPT 분석 실패 시 또는 0일 때 Regex 기반 백업 카운팅
+    hesitation_count = speech_patterns_result.get('hesitation_count', 0)
+    filler_count = speech_patterns_result.get('filler_count', 0)
+    
+    if hesitation_count == 0:
+        import re
+        # HESITATION_PATTERNS = ["~했는데", "~같아요", "~말이죠", "~라든지", "~입니다만", "약간", "왠지"]
+        for pat in HESITATION_PATTERNS:
+            # 단순 포함 여부 체크 (정확도를 위해선 형태소 분석이 필요하나 여기선 간단히)
+            hesitation_count += len(re.findall(pat, full_text))
+
+    if filler_count == 0:
+        import re
+        # FILLER_WORDS = ["음", "어", "아", "저", "그니까", "그러니까", "뭐", "사실"]
+        for word in FILLER_WORDS:
+            # 단어 단위 매칭을 위해 \b 사용 고려, 한국어는 조사 때문에 \b가 애매할 수 있음.
+            # 여기서는 단순 카운팅
+            filler_count += len(re.findall(word, full_text))
+
     return {
         "raw_text_for_gpt": full_text,
         "wpm": wpm,
         "pause_events": pause_events,
         "avg_pause_duration": avg_pause_duration,
         "long_pause_count": long_pause_count,
-        "hesitation_count": speech_patterns_result.get('hesitation_count', 0),
-        "filler_count": speech_patterns_result.get('filler_count', 0),
+        "hesitation_count": hesitation_count,
+        "filler_count": filler_count,
         "hesitation_list": speech_patterns_result.get('hesitation_list', []),
         "filler_list": speech_patterns_result.get('filler_list', []),
         "text_for_logic_analysis": speech_patterns_result.get('text_for_logic_analysis', full_text),

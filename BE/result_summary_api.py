@@ -145,6 +145,7 @@ def _normalize_payload(raw: Dict[str, Any]) -> Dict[str, Any]:
     ) or video_preview
 
     return {
+        "scores": data.get("scores", {}),
         "overallScore": data.get("overallScore") or data.get("score") or 80,
         "duration": round(duration_sec) if duration_sec else 0,
         "analysis": {

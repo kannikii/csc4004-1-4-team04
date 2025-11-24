@@ -5,6 +5,8 @@ import sampleResult from "../mocks/sampleResult.json";
 import { useEffect, useState } from "react";
 import { getPresentationDetail } from "../lib/firestore";
 import { fetchFeedbackSummary } from "../apis/feedbackSummary";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Page = "home" | "record" | "results" | "mypage";
 
@@ -100,8 +102,35 @@ function normalizeData(raw: any) {
       .filter(Boolean)
       .join(" / ") || videoPreview;
 
+  const scores = normalized.scores || {};
+
+  // 세부 점수 매핑
+  const videoGazeScore = scores.video_gaze ?? 0;
+  const videoPostureScore = scores.video_posture ?? 0;
+  const videoGestureScore = scores.video_gesture ?? 0;
+
+  // 총점 계산 (값이 없으면 합산)
+  const voiceScore = scores.voice ?? 0;
+  const logicScore = scores.logic ?? 20;
+  const videoScore = (scores.video && scores.video > 0)
+    ? scores.video
+    : (videoGazeScore + videoPostureScore + videoGestureScore);
+
+  // 전체 총점 (값이 없으면 합산)
+  const overallScore = (normalized.overallScore && normalized.overallScore > 0)
+    ? normalized.overallScore
+    : (voiceScore + videoScore + logicScore);
+
   return {
-    overallScore: normalized.overallScore ?? normalized.score ?? sampleResult.overallScore,
+    overallScore: overallScore,
+    scores: {
+      voice: voiceScore,
+      video: videoScore,
+      logic: logicScore,
+      video_gaze: videoGazeScore,
+      video_posture: videoPostureScore,
+      video_gesture: videoGestureScore,
+    },
     duration,
     analysis: {
       voice: {
@@ -311,47 +340,90 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
 
         {/* 영상 분석 */}
         <section className="mb-12">
-          <h2 className="text-2xl font-semibold text-white mb-4 flex items-center gap-2">
+          <h2 className="text-2xl font-semibold text-white mb-6 flex items-center gap-2">
             <VideoIcon className="text-sky-300" />
             <span>영상 분석</span>
           </h2>
 
-          <div className="p-6 rounded-xl bg-sky-50 border border-sky-200 shadow-sm">
-            <h3 className="text-slate-900 text-lg font-semibold mb-3">영상 기반 피드백</h3>
-            <p className="text-slate-800 whitespace-pre-line leading-relaxed text-sm">
-              {video.feedback_preview}
-            </p>
+          <div className="p-8 rounded-2xl shadow-xl backdrop-blur bg-white/5 border border-white/10">
+            <div className="mb-8 p-6 rounded-xl bg-sky-50 border border-sky-200 shadow-sm">
+              <h3 className="text-slate-900 text-lg font-semibold mb-3">영상 기반 피드백 요약</h3>
+              <p className="text-slate-800 whitespace-pre-line leading-relaxed text-sm">
+                {video.feedback_preview}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6 text-sm text-slate-800">
-              <div className="p-4 rounded-lg bg-white border border-sky-100">
-                <div className="font-semibold mb-1">시선 분포</div>
-                <div>정면 응시율: {(video.gaze?.center_ratio ?? 0).toFixed(2)}</div>
-                <div>
-                  좌/중/우: {video.gaze?.distribution?.left ?? 0} / {video.gaze?.distribution?.center ?? 0} /{" "}
-                  {video.gaze?.distribution?.right ?? 0}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {/* 영상 점수 카드 추가 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">영상 점수</h3>
+                <p className="text-sky-600 text-3xl font-bold">{data.scores?.video ?? 0} / 40</p>
+                <p className="text-slate-500 text-sm mt-1">AI 평가 점수</p>
+              </div>
+
+              {/* 시선 분포 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">시선 분포</h3>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>정면 응시율: <span className="font-bold text-sky-600">{(video.gaze?.center_ratio ?? 0).toFixed(2)}</span></p>
+                  <p>좌/중/우: {video.gaze?.distribution?.left ?? 0} / {video.gaze?.distribution?.center ?? 0} / {video.gaze?.distribution?.right ?? 0}</p>
                 </div>
+                {video.gaze?.interpretation && (
+                  <p className="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                    {video.gaze.interpretation}
+                  </p>
+                )}
               </div>
-              <div className="p-4 rounded-lg bg-white border border-sky-100">
-                <div className="font-semibold mb-1">자세 안정성</div>
-                <div>stability: {(video.posture?.stability ?? 0).toFixed(3)}</div>
-                <div>roll: {video.posture?.roll_mean ?? 0}</div>
+
+              {/* 자세 안정성 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">자세 안정성</h3>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>안정성 점수: <span className="font-bold text-sky-600">{(video.posture?.stability ?? 0).toFixed(3)}</span></p>
+                  <p>기울기(Roll): {video.posture?.roll_mean ?? 0}</p>
+                </div>
+                {video.posture?.interpretation && (
+                  <p className="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                    {video.posture.interpretation}
+                  </p>
+                )}
               </div>
-              <div className="p-4 rounded-lg bg-white border border-sky-100">
-                <div className="font-semibold mb-1">제스처/손동작</div>
-                <div>motion: {video.gesture?.motion_energy ?? 0}</div>
-                <div>손 노출 비율: {(video.hand?.visibility_ratio ?? 0).toFixed(3)}</div>
+
+              {/* 제스처/손동작 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">제스처/손동작</h3>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>움직임 에너지: <span className="font-bold text-sky-600">{video.gesture?.motion_energy ?? 0}</span></p>
+                  <p>손 노출 비율: {(video.hand?.visibility_ratio ?? 0).toFixed(3)}</p>
+                </div>
+                {video.gesture?.interpretation && (
+                  <p className="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                    {video.gesture.interpretation}
+                  </p>
+                )}
               </div>
-              <div className="p-4 rounded-lg bg-white border border-sky-100">
-                <div className="font-semibold mb-1">머리 방향</div>
-                <div>roll: {video.head?.roll_mean ?? 0}</div>
-                <div>yaw: {video.head?.yaw_mean ?? 0}</div>
+
+              {/* 머리 방향 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">머리 방향</h3>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>좌우 회전(Yaw): {video.head?.yaw_mean ?? 0}</p>
+                  <p>기울기(Roll): {video.head?.roll_mean ?? 0}</p>
+                </div>
+                {video.head?.interpretation && (
+                  <p className="mt-3 text-xs text-slate-500 bg-slate-50 p-2 rounded">
+                    {video.head.interpretation}
+                  </p>
+                )}
               </div>
-              <div className="p-4 rounded-lg bg-white border border-sky-100">
-                <div className="font-semibold mb-1">재생 시간/해상도</div>
-                <div>duration: {(video.metadata?.duration_sec ?? 0).toFixed(1)}s</div>
-                <div>fps: {video.metadata?.fps ?? 0}</div>
-                <div>
-                  res: {video.metadata?.resolution?.[0] ?? "-"} x {video.metadata?.resolution?.[1] ?? "-"}
+
+              {/* 메타데이터 */}
+              <div className="p-6 rounded-xl bg-white shadow-md border border-slate-200">
+                <h3 className="text-slate-900 text-lg font-semibold mb-2">영상 정보</h3>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <p>재생 시간: {(video.metadata?.duration_sec ?? 0).toFixed(1)}초</p>
+                  <p>FPS: {video.metadata?.fps ?? 0}</p>
+                  <p>해상도: {video.metadata?.resolution?.[0] ?? "-"} x {video.metadata?.resolution?.[1] ?? "-"}</p>
                 </div>
               </div>
             </div>
@@ -364,19 +436,34 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
             <FileText className="text-amber-300" />
             <span>최종 피드백</span>
           </h2>
-          <div className="p-6 rounded-xl bg-amber-50 border border-amber-200 shadow-sm">
-            <p className="text-slate-800 whitespace-pre-line leading-relaxed text-sm">
-              {data.final_report_preview || "아직 생성된 피드백이 없습니다."}
-            </p>
-            <div className="flex justify-end mt-4">
-              <Button
-                onClick={() => setShowModal(true)}
-                className="bg-amber-500 text-white border-0"
-                disabled={!data.final_report && !data.final_report_preview}
-              >
-                AI 피드백 전체 보기
-              </Button>
+          <div className="p-8 rounded-xl bg-amber-50 border border-amber-200 shadow-sm flex flex-col items-center justify-center text-center">
+
+            {/* 점수 요약 표시 */}
+            <div className="grid grid-cols-3 gap-4 w-full max-w-lg mb-8">
+              <div className="bg-white p-4 rounded-lg border border-amber-100 shadow-sm">
+                <div className="text-sm text-slate-500 mb-1">음성 점수</div>
+                <div className="text-xl font-bold text-slate-800">{data.scores?.voice ?? 0} <span className="text-xs text-slate-400">/ 40</span></div>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-amber-100 shadow-sm">
+                <div className="text-sm text-slate-500 mb-1">논리 점수</div>
+                <div className="text-xl font-bold text-slate-800">{data.scores?.logic ?? 20} <span className="text-xs text-slate-400">/ 20</span></div>
+              </div>
+              <div className="bg-white p-4 rounded-lg border border-amber-100 shadow-sm">
+                <div className="text-sm text-slate-500 mb-1">영상 점수</div>
+                <div className="text-xl font-bold text-slate-800">{data.scores?.video ?? 0} <span className="text-xs text-slate-400">/ 40</span></div>
+              </div>
             </div>
+
+            <p className="text-slate-700 mb-6 text-lg">
+              AI가 분석한 종합 피드백 보고서가 준비되었습니다.
+            </p>
+            <Button
+              onClick={() => setShowModal(true)}
+              className="bg-amber-500 hover:bg-amber-600 text-white border-0 px-8 py-3 text-lg h-auto rounded-full shadow-lg transition-transform hover:scale-105"
+              disabled={!data.final_report && !data.final_report_preview}
+            >
+              AI 피드백 전체 보기
+            </Button>
           </div>
         </section>
 
@@ -405,9 +492,9 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
             </div>
             <div className="p-6">
               <article className="prose prose-sm max-w-none prose-slate">
-                {(data.final_report || data.final_report_preview || "").split("\n").map((line, idx) => (
-                  <p key={idx}>{line}</p>
-                ))}
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {data.final_report || data.final_report_preview || ""}
+                </ReactMarkdown>
               </article>
             </div>
           </div>

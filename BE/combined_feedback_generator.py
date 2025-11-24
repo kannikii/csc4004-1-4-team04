@@ -41,6 +41,7 @@ def _ensure_voice_analysis(stt_result: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _build_combined_prompt(video_result: Dict[str, Any], stt_result: Dict[str, Any]) -> str:
+    # Video Data
     video_meta = video_result.get("metadata", {})
     gaze = video_result.get("gaze") or {}
     posture = video_result.get("posture") or {}
@@ -48,10 +49,17 @@ def _build_combined_prompt(video_result: Dict[str, Any], stt_result: Dict[str, A
     hand = video_result.get("hand") or {}
     head = video_result.get("head_pose") or {}
 
+    # Audio Data
     stt_result = _ensure_voice_analysis(stt_result)
     voice_analysis = stt_result.get("voice_analysis") or {}
-    pause_events = voice_analysis.get("pause_events") or []
-    pause_example = pause_events[:5] if pause_events else []
+    
+    # Voice Metrics
+    wpm = voice_analysis.get("wpm") or stt_result.get("wordsPerMinute")
+    avg_pause = voice_analysis.get("avg_pause_duration") or stt_result.get("pauseDuration")
+    long_pause_count = voice_analysis.get("long_pause_count")
+    hesitation = voice_analysis.get("hesitation_count") or stt_result.get("hesitationCount")
+    filler = voice_analysis.get("filler_count") or stt_result.get("fillerCount")
+    
     summary_script = (
         stt_result.get("full_text")
         or stt_result.get("scriptRecognized")
@@ -60,34 +68,130 @@ def _build_combined_prompt(video_result: Dict[str, Any], stt_result: Dict[str, A
         or ""
     )[:700]
 
-    wpm = voice_analysis.get("wpm") or stt_result.get("wordsPerMinute")
-    avg_pause = voice_analysis.get("avg_pause_duration") or stt_result.get("pauseDuration")
-    long_pause_count = voice_analysis.get("long_pause_count")
-    hesitation = voice_analysis.get("hesitation_count") or stt_result.get("hesitationCount")
-    filler = voice_analysis.get("filler_count") or stt_result.get("fillerCount")
+    return f"""
+    당신은 발표 분석 전문가이며, 아래는 발표자의 영상 및 음성 분석 결과 데이터입니다.
+    데이터를 기반으로 전문가 보고서 형식의 리포트를 작성하세요.
 
-    return (
-        "You are a presentation coach. Generate a Korean Markdown report (no code fences). "
-        "Split the report into two major parts: 🎙 음성(STT) & 전달 / 🎥 동작·영상 분석. "
-        "Keep 기존 평가 척도(시선·자세·몸짓·손동작·머리방향 등)는 유지하면서 필요하면 세부 항목을 보완하세요. "
-        "Use concise tables with 기준/평가/수치/개선점, then short narratives. "
-        "Voice section must include: WPM, 평균/긴 정지 구간, pause 예시, filler/hesitation 빈도, 발화 명료도·리듬·억양 평가, 스크립트 요약/대표 구절. "
-        "종합 평가표(10점 만점)와 총평, 개선 제안 3가지를 포함하세요.\n\n"
-        "Video meta:\n"
-        f"{json.dumps(video_meta, ensure_ascii=False)}\n\n"
-        "Video analysis blocks:\n"
-        f"gaze={json.dumps(gaze, ensure_ascii=False)}\n"
-        f"posture={json.dumps(posture, ensure_ascii=False)}\n"
-        f"gesture={json.dumps(gesture, ensure_ascii=False)}\n"
-        f"hand={json.dumps(hand, ensure_ascii=False)}\n"
-        f"head_pose={json.dumps(head, ensure_ascii=False)}\n\n"
-        "Voice analysis:\n"
-        f"{json.dumps(voice_analysis, ensure_ascii=False)}\n"
-        f"pause_examples={json.dumps(pause_example, ensure_ascii=False)}\n"
-        f"wpm={wpm}, avg_pause={avg_pause}, long_pause_count={long_pause_count}, hesitation={hesitation}, filler={filler}\n"
-        f"Raw STT meta: duration_sec={stt_result.get('duration_sec')}, word_count={stt_result.get('word_count')}\n"
-        f"script_snippet={json.dumps(summary_script, ensure_ascii=False)}\n"
-    )
+    --- 🔍 분석 데이터 요약 ---
+    🎬 [영상 메타데이터]
+    • FPS: {video_meta.get('fps')}
+    • Duration: {video_meta.get('duration_sec')}초
+    • Resolution: {video_meta.get('resolution')}
+
+    👁️ [시선(Gaze)]
+    • 정면 응시율(center_ratio): {gaze.get('center_ratio')}
+    • 시선 분포(distribution): {gaze.get('distribution')}
+    • 해석: {gaze.get('interpretation')}
+
+    🧍 [자세(Posture)]
+    • 안정성(stability): {posture.get('stability')}
+    • 평균 기울기(roll_mean): {posture.get('roll_mean')}
+    • 해석: {posture.get('interpretation')}
+
+    💫 [몸짓(Gesture)]
+    • 움직임 에너지(motion_energy): {gesture.get('motion_energy')}
+    • 평가: {gesture.get('evaluation')}
+    • 해석: {gesture.get('interpretation')}
+
+    ✋ [손동작(Hand)]
+    • 손 인식 비율(visibility_ratio): {hand.get('visibility_ratio')}
+    • 손 움직임 정도(movement): {hand.get('movement')}
+    • 평가: {hand.get('evaluation')}
+    • 해석: {hand.get('interpretation')}
+
+    🧠 [머리 방향(Head Pose)]
+    • Roll 평균(roll_mean): {head.get('roll_mean')}
+    • Yaw 평균(yaw_mean): {head.get('yaw_mean')}
+    • 평가: {head.get('evaluation')}
+    • 해석: {head.get('interpretation')}
+
+    🎙️ [음성(Voice)]
+    • 말하기 속도(WPM): {wpm} (권장: 140~160)
+    • 평균 휴지기(Pause): {avg_pause}초
+    • 긴 침묵 횟수: {long_pause_count}회
+    • 주저함(Hesitation): {hesitation}회
+    • 군더더기 말(Filler): {filler}회
+    • 발화 요약: {summary_script}...
+
+    --- 작성 규칙 ---
+    1. **반드시 JSON 형식으로만 응답하세요.**
+    2. JSON 구조는 다음과 같아야 합니다:
+       {{
+         "voice_score": 0~40 사이 정수,
+         "video_gaze_score": 0~15 사이 정수,
+         "video_posture_score": 0~15 사이 정수,
+         "video_gesture_score": 0~10 사이 정수,
+         "video_score": 0~40 사이 정수 (위 3개 합산),
+         "logic_score": 20,  // (고정값)
+         "content": "Markdown 형식의 전체 보고서 내용..."
+       }}
+    3. **점수 산정 기준 (엄격 준수)**:
+       - **영상 점수 (총 40점 만점)**:
+         - 시선 처리 (Gaze): 최대 15점
+         - 자세 안정성 (Posture): 최대 15점
+         - 몸짓/손동작 (Gesture): 최대 10점
+         - *위 3개 항목의 합계를 `video_score`로 기입하세요.*
+       - **음성 점수 (총 40점 만점)**:
+         - 말하기 속도, 발음, 휴지기, 유창성을 종합하여 평가.
+    4. `content` 필드 내부에는 아래 섹션 순서로 Markdown 보고서를 작성하세요:
+       🎬 영상 기본 정보 → 👁️ 시선 분석 → 🧍 자세 분석 → 💫 몸짓/손동작 → 🎙️ 음성/전달력 → 📊 종합 평가표 → 💬 총평 및 개선점
+    5. **종합 평가표 작성 시 반드시 아래 표 형식을 따르세요 (Regex 파싱용):**
+       | 항목 | 점수 | 기준 | 평가 수준 |
+       |---|---|---|---|
+       | 영상(시선) | OO | 0~15 | ... |
+       | 영상(자세) | OO | 0~15 | ... |
+       | 영상(몸짓) | OO | 0~10 | ... |
+       | 음성 | OO | 0~40 | ... |
+       | 논리 | 20 | 0~20 | ... |
+    6. 각 섹션은 Markdown 표 형식과 서술식 해석을 포함해야 합니다.
+    7. 각 항목별로 수치, 기준, 평가 수준, 개선점 요약을 반드시 기술하세요.
+    8. 전문가 보고서 어조로, 발표 코칭 리포트처럼 작성하세요.
+    9. 수치 기준 근거(예: Mehrabian(1972) 등)를 적절히 인용하면 좋습니다.
+    """
+
+
+def _extract_scores_from_markdown(md_text: str) -> Dict[str, int]:
+    """Markdown 텍스트에서 정규식으로 점수를 추출합니다 (Fallback)."""
+    import re
+    scores = {
+        "voice": 0, 
+        "video": 0, 
+        "logic": 20,
+        "video_gaze": 0,
+        "video_posture": 0,
+        "video_gesture": 0
+    }
+    
+    # 예: | 음성 | 36 | ...
+    voice_pattern = re.search(r"\|\s*음성(?: 점수)?\s*\|\s*(\d+)", md_text)
+    if voice_pattern:
+        try:
+            scores["voice"] = int(voice_pattern.group(1))
+        except:
+            pass
+
+    # 세부 항목 추출
+    gaze_pattern = re.search(r"\|\s*영상\(?시선\)?\s*\|\s*(\d+)", md_text)
+    posture_pattern = re.search(r"\|\s*영상\(?자세\)?\s*\|\s*(\d+)", md_text)
+    gesture_pattern = re.search(r"\|\s*영상\(?몸짓\)?\s*\|\s*(\d+)", md_text)
+
+    if gaze_pattern:
+        scores["video_gaze"] = int(gaze_pattern.group(1))
+    if posture_pattern:
+        scores["video_posture"] = int(posture_pattern.group(1))
+    if gesture_pattern:
+        scores["video_gesture"] = int(gesture_pattern.group(1))
+        
+    # 합산
+    scores["video"] = scores["video_gaze"] + scores["video_posture"] + scores["video_gesture"]
+    
+    # 만약 합산이 0인데 '영상' 총점이 따로 있다면?
+    if scores["video"] == 0:
+        video_total_pattern = re.search(r"\|\s*영상(?: 점수)?\s*\|\s*(\d+)", md_text)
+        if video_total_pattern:
+             scores["video"] = int(video_total_pattern.group(1))
+
+    return scores
 
 
 def generate_combined_feedback_report(
@@ -98,7 +202,7 @@ def generate_combined_feedback_report(
     run_id: Optional[str] = None,
     original_filename: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """영상+음성 통합 LLM 리포트 생성 및 저장."""
+    """영상+음성 통합 LLM 리포트 생성 및 저장 (점수 포함)."""
     if not _client:
         raise RuntimeError("OPENROUTER_API_KEY가 설정되지 않았습니다.")
 
@@ -107,8 +211,9 @@ def generate_combined_feedback_report(
 
     completion = _client.chat.completions.create(
         model=OPENROUTER_MODEL,
+        response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": "당신은 발표 영상+음성 피드백을 작성하는 전문가입니다."},
+            {"role": "system", "content": "당신은 발표 영상+음성 피드백을 작성하는 전문가입니다. 반드시 JSON 형식으로 응답하세요."},
             {"role": "user", "content": prompt},
         ],
         extra_headers={
@@ -117,7 +222,43 @@ def generate_combined_feedback_report(
         },
     )
 
-    feedback_md = completion.choices[0].message.content
+    raw_response = completion.choices[0].message.content
+    
+    # 기본값
+    voice_score = 0
+    video_score = 0
+    logic_score = 20
+    video_gaze = 0
+    video_posture = 0
+    video_gesture = 0
+    feedback_md = ""
+
+    try:
+        parsed_response = json.loads(raw_response)
+        feedback_md = parsed_response.get("content", "")
+        voice_score = parsed_response.get("voice_score", 0)
+        video_score = parsed_response.get("video_score", 0)
+        logic_score = parsed_response.get("logic_score", 20)
+        
+        video_gaze = parsed_response.get("video_gaze_score", 0)
+        video_posture = parsed_response.get("video_posture_score", 0)
+        video_gesture = parsed_response.get("video_gesture_score", 0)
+        
+    except json.JSONDecodeError:
+        print("⚠️ LLM 응답이 JSON 형식이 아닙니다. Raw text로 처리합니다.")
+        feedback_md = raw_response
+
+    # Fallback: JSON 점수가 0이면 Markdown에서 추출 시도
+    if voice_score == 0 and video_score == 0:
+        print("⚠️ JSON 점수가 0입니다. Markdown에서 추출을 시도합니다.")
+        extracted = _extract_scores_from_markdown(feedback_md)
+        if extracted["voice"] > 0:
+            voice_score = extracted["voice"]
+        if extracted["video"] > 0:
+            video_score = extracted["video"]
+            video_gaze = extracted["video_gaze"]
+            video_posture = extracted["video_posture"]
+            video_gesture = extracted["video_gesture"]
 
     output_dir = Path("feedback_reports")
     output_dir.mkdir(exist_ok=True)
@@ -136,4 +277,12 @@ def generate_combined_feedback_report(
         "file_path": str(output_path),
         "feedback_preview": feedback_md[:400] + ("..." if len(feedback_md) > 400 else ""),
         "content": feedback_md,
+        "scores": {
+            "voice": voice_score,
+            "video": video_score,
+            "logic": logic_score,
+            "video_gaze": video_gaze,
+            "video_posture": video_posture,
+            "video_gesture": video_gesture,
+        }
     }
