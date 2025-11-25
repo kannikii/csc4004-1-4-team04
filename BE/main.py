@@ -16,7 +16,8 @@ from stt_processor import (
     get_stt_progress,
     analyze_voice_rhythm_and_patterns,
 )
-from feedback_api import router as voice_feedback_router, generate_combined_feedback_report
+
+from combined_feedback_generator import generate_combined_feedback_report
 from result_summary_api import router as summary_router
 
 # Firebase (Firestore)
@@ -38,7 +39,6 @@ def _init_firestore():
 db = _init_firestore()
 
 app = FastAPI()
-app.include_router(voice_feedback_router)
 app.include_router(summary_router)
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
