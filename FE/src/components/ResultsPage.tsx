@@ -490,9 +490,28 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
                 닫기
               </button>
             </div>
-            <div className="p-6">
+            <div className="p-8">
               <article className="prose prose-sm max-w-none prose-slate">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    h1: ({ node, ...props }) => <h1 className="text-2xl font-bold text-slate-900 mt-8 mb-4 pb-2 border-b border-slate-200" {...props} />,
+                    h2: ({ node, ...props }) => <h2 className="text-xl font-bold text-slate-800 mt-6 mb-3 flex items-center gap-2" {...props} />,
+                    h3: ({ node, ...props }) => <h3 className="text-lg font-semibold text-slate-800 mt-4 mb-2" {...props} />,
+                    p: ({ node, ...props }) => <p className="text-slate-600 leading-relaxed mb-4" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="list-disc list-inside space-y-1 text-slate-600 mb-4 ml-2" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="list-decimal list-inside space-y-1 text-slate-600 mb-4 ml-2" {...props} />,
+                    li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                    table: ({ node, ...props }) => <div className="overflow-x-auto mb-6 rounded-lg border border-slate-200 shadow-sm"><table className="w-full border-collapse text-sm text-left" {...props} /></div>,
+                    thead: ({ node, ...props }) => <thead className="bg-slate-50 text-slate-700 font-semibold" {...props} />,
+                    tbody: ({ node, ...props }) => <tbody className="divide-y divide-slate-100" {...props} />,
+                    tr: ({ node, ...props }) => <tr className="hover:bg-slate-50/50 transition-colors" {...props} />,
+                    th: ({ node, ...props }) => <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap" {...props} />,
+                    td: ({ node, ...props }) => <td className="px-4 py-3 text-slate-600" {...props} />,
+                    blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-amber-300 pl-4 italic text-slate-600 my-4 bg-amber-50 py-2 pr-2 rounded-r" {...props} />,
+                    code: ({ node, ...props }) => <code className="bg-slate-100 text-slate-800 px-1.5 py-0.5 rounded text-xs font-mono" {...props} />,
+                  }}
+                >
                   {data.final_report || data.final_report_preview || ""}
                 </ReactMarkdown>
               </article>
