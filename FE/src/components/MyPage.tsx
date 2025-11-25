@@ -64,12 +64,45 @@ export function MyPage({ user, onNavigate, onSelectPresentation }: MyPageProps) 
             return { ...p, date: dateVal };
           })
         : [],
-    skillProgress: stats?.skillProgress || {
-      clarity: 0,
-      pace: 0,
-      confidence: 0,
-      engagement: 0,
-    },
+    // compute skill progress from recent presentations
+    // similarity: average of available similarity (0-100)
+    // pace: percent of presentations whose wpm is within recommended range (140-160)
+    // gaze/posture: average percent (0-100)
+    skillProgress: (() => {
+      const recent = presentations.slice(0, 10);
+
+      // similarity
+      let sSum = 0, sCnt = 0;
+      // pace (within range count)
+      let paceIn = 0, paceCnt = 0;
+      // gaze/posture
+      let gSum = 0, gCnt = 0;
+      let pSum = 0, pCnt = 0;
+
+      recent.forEach((p) => {
+        const pm = (p as any).progressMetrics;
+        if (!pm) return;
+
+        if (typeof pm.similarity === 'number') { sSum += pm.similarity; sCnt += 1; }
+
+        const wpm = typeof pm.paceWpm === 'number' ? pm.paceWpm : (p.stt_analysis?.voice_analysis?.wpm ?? p.stt_analysis?.wpm ?? null);
+        const wpmNum = typeof wpm === 'string' ? Number(wpm) : wpm;
+        if (typeof wpmNum === 'number' && Number.isFinite(wpmNum)) {
+          paceCnt += 1;
+          if (wpmNum >= 140 && wpmNum <= 160) paceIn += 1;
+        }
+
+        if (typeof pm.gaze === 'number') { gSum += pm.gaze; gCnt += 1; }
+        if (typeof pm.posture === 'number') { pSum += pm.posture; pCnt += 1; }
+      });
+
+      return {
+        similarity: sCnt ? Math.round(sSum / sCnt) : 0,
+        pace: paceCnt ? Math.round((paceIn / paceCnt) * 100) : 0,
+        gaze: gCnt ? Math.round(gSum / gCnt) : 0,
+        posture: pCnt ? Math.round(pSum / pCnt) : 0,
+      };
+    })(),
   };
 
   const formatDate = (dateString: string) => {
@@ -221,7 +254,7 @@ export function MyPage({ user, onNavigate, onSelectPresentation }: MyPageProps) 
                     >
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h3 className="text-white mb-1">{presentation.title}</h3>
+                          <h3 className="text-white mb-1">{presentation.projectName || presentation.title}</h3>
                           <div className="flex items-center gap-3 text-sm text-white/60">
                             <div className="flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
@@ -231,8 +264,8 @@ export function MyPage({ user, onNavigate, onSelectPresentation }: MyPageProps) 
                             <span>{formatDuration(presentation.duration)}</span>
                           </div>
                         </div>
-                        <div className={`text-2xl ${getScoreColor(presentation.overallScore ?? presentation.score ?? 0)}`}>
-                          {presentation.overallScore ?? presentation.score ?? 0}
+                        <div className={`text-2xl ${getScoreColor(presentation.overallScore ?? 0)}`}> 
+                          {presentation.overallScore ?? 0}
                         </div>
                       </div>
                     </motion.div>
@@ -253,10 +286,10 @@ export function MyPage({ user, onNavigate, onSelectPresentation }: MyPageProps) 
               <div className="space-y-6">
                 {Object.entries(userData.skillProgress).map(([key, value], index) => {
                   const labels: Record<string, string> = {
-                    clarity: '발음 명확성',
+                    similarity: '발표 자료 유사도',
                     pace: '발표 속도',
-                    confidence: '자신감',
-                    engagement: '청중 몰입도',
+                    gaze: '시선 처리',
+                    posture: '자세 안정성',
                   };
 
                   return (

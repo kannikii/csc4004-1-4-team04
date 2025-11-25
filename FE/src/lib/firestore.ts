@@ -35,6 +35,13 @@ export interface PresentationData {
   vision_analysis?: any;
   final_report?: string;
   final_report_preview?: string;
+  projectName?: string;
+  progressMetrics?: {
+    similarity?: number | null; // 0-100
+    paceWpm?: number | null; // raw wpm number (e.g. 145)
+    gaze?: number | null; // 0-100 (center ratio)
+    posture?: number | null; // 0-100 (stability)
+  };
   overallScore: number;
   duration: number;
   metrics: {
@@ -198,12 +205,31 @@ export async function getUserPresentations(
   // 각 프로젝트에서 최근 feedback 몇 개씩 수집
   const feedbackPromises = projectsSnap.docs.map(async (projDoc) => {
     const projectId = projDoc.id;
+    const projData = projDoc.data() as any;
+    const projectName = projData?.name || projData?.title || projectId;
     const fbCol = collection(db, 'users', userId, 'projects', projectId, 'feedback');
     const fbSnap = await getDocs(query(fbCol));
     fbSnap.forEach((d) => {
       const data = d.data() as any;
       const updatedAt = asDate(data.updated_at);
       const createdAt = asDate(data.created_at);
+      // --- Extract progress metrics ---
+      const rawSimilarity =
+        data.logic_similarity ?? data.analysis?.logic?.similarity ?? data.stt_analysis?.logic_similarity ?? null;
+      const similarity = typeof rawSimilarity === 'number' ? Math.max(0, Math.min(100, Math.round(rawSimilarity))) : null;
+
+      const rawWpm =
+        data.stt_analysis?.voice_analysis?.wpm ?? data.stt_analysis?.wpm ?? data.stt_result?.voice_analysis?.wpm ?? data.stt_result?.wpm ?? null;
+      const wpmNum = typeof rawWpm === 'string' ? Number(rawWpm) : rawWpm;
+      // store raw WPM as-is (number) so frontend can compute % within recommended range (140-160)
+      const paceWpm = typeof wpmNum === 'number' && Number.isFinite(wpmNum) ? Math.max(0, Math.round(wpmNum)) : null;
+
+      const rawGazeCenter = data.vision_analysis?.gaze?.center_ratio ?? data.vision_analysis?.gaze?.distribution?.center ?? data.gaze?.center_ratio ?? null;
+      const gaze = typeof rawGazeCenter === 'number' ? Math.max(0, Math.min(100, Math.round(rawGazeCenter * (rawGazeCenter <= 1 ? 100 : 1)))) : null;
+
+      const rawPosture = data.vision_analysis?.posture?.stability ?? data.posture?.stability ?? null;
+      const posture = typeof rawPosture === 'number' ? Math.max(0, Math.min(100, Math.round(rawPosture * (rawPosture <= 1 ? 100 : 1)))) : null;
+
       presentations.push({
         id: d.id,
         userId,
@@ -215,6 +241,7 @@ export async function getUserPresentations(
       final_report_preview: data.final_report_preview,
       stt_analysis: data.stt_analysis,
       vision_analysis: data.vision_analysis,
+      progressMetrics: { similarity, paceWpm, gaze, posture },
       overallScore: data.overallScore || 80,
       duration:
         data.duration_sec ||
@@ -227,6 +254,7 @@ export async function getUserPresentations(
         createdAt: createdAt,
         updatedAt: updatedAt,
         projectId,
+        projectName,
       });
     });
   });

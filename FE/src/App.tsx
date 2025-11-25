@@ -65,7 +65,7 @@ export default function App() {
   };
 
   const handleNavigateToMyPage = () => setCurrentPage(user ? 'mypage' : 'auth');
-  const handleNavigateToRecord = () => setCurrentPage(user ? 'record' : 'auth');
+  const handleNavigateToRecord = () => setCurrentPage(user ? 'scriptupload' : 'auth');
 
   // 🔹 페이지 렌더링
   const renderPage = () => {
@@ -179,7 +179,7 @@ export default function App() {
               <button
                 onClick={handleNavigateToRecord}
                 className={`px-4 py-2 rounded-lg transition-all ${
-                  currentPage === 'record'
+                  currentPage === 'scriptupload'
                     ? 'bg-white/20 text-white'
                     : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
