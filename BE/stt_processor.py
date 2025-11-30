@@ -41,6 +41,11 @@ WHISPER_DEVICE = os.getenv("WHISPER_DEVICE", "auto").lower()
 FASTER_WHISPER_COMPUTE_TYPE = os.getenv("FASTER_WHISPER_COMPUTE_TYPE", "int8")
 PAUSE_THRESHOLD_SEC = float(os.getenv("PAUSE_THRESHOLD_SEC", "2.0"))
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")  # 기본값(None) 시 OpenAI 공식 엔드포인트
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# (옵션) 추후 OpenRouter로 전환할 때를 위한 설정값
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -58,19 +63,24 @@ _stt_progress = {"progress": 0, "stage": "idle"}
 _stt_last_logged = {"progress": -1, "stage": ""}
 _firestore_client: Optional[firestore.Client] = None
 
-_openrouter_client: Optional[OpenAI] = None
-_openrouter_headers: Dict[str, str] = {}
+_llm_client: Optional[OpenAI] = None
+_llm_model: str = OPENAI_MODEL
+_llm_headers: Dict[str, str] = {}
+_llm_provider: str = "openai"
 
-if OPENROUTER_SITE:
-    _openrouter_headers["HTTP-Referer"] = OPENROUTER_SITE
-if OPENROUTER_TITLE:
-    _openrouter_headers["X-Title"] = OPENROUTER_TITLE
-
-if OPENROUTER_API_KEY:
-    _openrouter_client = OpenAI(
-        base_url=OPENROUTER_BASE_URL,
-        api_key=OPENROUTER_API_KEY,
-    )
+if OPENAI_API_KEY:
+    _llm_client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None)
+    _llm_model = OPENAI_MODEL
+    _llm_provider = "openai"
+elif OPENROUTER_API_KEY:
+    # 필요 시 OpenRouter로 스위칭할 수 있도록 남겨둔 분기
+    if OPENROUTER_SITE:
+        _llm_headers["HTTP-Referer"] = OPENROUTER_SITE
+    if OPENROUTER_TITLE:
+        _llm_headers["X-Title"] = OPENROUTER_TITLE
+    _llm_client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY)
+    _llm_model = OPENROUTER_MODEL
+    _llm_provider = "openrouter"
 
 
 def _clamp(value: int) -> int:
@@ -338,11 +348,11 @@ def whisper_transcribe(audio_path: Path):
 # 4. GPT 기반 언어 습관 분석
 # ------------------------------------
 def analyze_speech_patterns_with_gpt(full_text: str) -> Dict[str, Any]:
-    """OpenRouter를 통해 말끝 흐림·추임새를 JSON으로 반환."""
+    """LLM(기본: OpenAI, 옵션: OpenRouter)로 말끝 흐림·추임새를 JSON으로 반환."""
     if not full_text:
         return {}
-    if not _openrouter_client:
-        print("⚠️ OpenRouter API 키가 설정되지 않아 GPT 분석을 건너뜁니다.")
+    if not _llm_client:
+        print("⚠️ OPENAI_API_KEY/OPENROUTER_API_KEY가 설정되지 않아 GPT 분석을 건너뜁니다.")
         return {}
 
     system_prompt = (
@@ -352,18 +362,18 @@ def analyze_speech_patterns_with_gpt(full_text: str) -> Dict[str, Any]:
     )
 
     try:
-        completion = _openrouter_client.chat.completions.create(
-            model=OPENROUTER_MODEL,
+        completion = _llm_client.chat.completions.create(
+            model=_llm_model,
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": full_text},
             ],
-            extra_headers=_openrouter_headers or None,
+            extra_headers=_llm_headers or None,
         )
         return json.loads(completion.choices[0].message.content)
     except Exception as e:
-        print(f"❌ OpenRouter 호출 실패: {e}")
+        print(f"❌ LLM 호출 실패({_llm_provider}): {e}")
         return {}
 
 
@@ -495,7 +505,7 @@ def process_single_video(
     stt_result["base_name"] = base_name
 
     voice_analysis = None
-    if enable_gpt_analysis and _openrouter_client:
+    if enable_gpt_analysis and _llm_client:
         set_stt_progress(80, "GPT 언어습관 분석")
         voice_analysis = analyze_voice_rhythm_and_patterns(stt_result)
         stt_result["voice_analysis"] = voice_analysis

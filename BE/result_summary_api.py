@@ -8,8 +8,35 @@ import json
 import os
 
 from openai import OpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
+
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-client = OpenAI(api_key=OPENAI_API_KEY)
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")  # None이면 기본 OpenAI 엔드포인트
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# (옵션) OpenRouter로 전환할 때 사용할 설정
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_SITE = os.getenv("OPENROUTER_SITE_URL", "")
+OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "result-summary")
+
+_llm_headers = {}
+
+if OPENAI_API_KEY:
+    client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None)
+    LLM_MODEL = OPENAI_MODEL
+elif OPENROUTER_API_KEY:
+    if OPENROUTER_SITE:
+        _llm_headers["HTTP-Referer"] = OPENROUTER_SITE
+    if OPENROUTER_TITLE:
+        _llm_headers["X-Title"] = OPENROUTER_TITLE
+    client = OpenAI(api_key=OPENROUTER_API_KEY, base_url=OPENROUTER_BASE_URL)
+    LLM_MODEL = OPENROUTER_MODEL
+else:
+    raise RuntimeError("OPENAI_API_KEY 또는 OPENROUTER_API_KEY가 필요합니다.")
 
 
 from pathlib import Path
@@ -110,9 +137,10 @@ def _compute_script_similarity(script_text: Optional[str], spoken_text: Optional
     
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=LLM_MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.2,
+            extra_headers=_llm_headers or None,
         )
         print("[_compute_script_similarity] LLM 응답 수신")
 

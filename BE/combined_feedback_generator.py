@@ -17,6 +17,11 @@ from stt_processor import analyze_voice_rhythm_and_patterns
 
 load_dotenv()
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL")  # None이면 기본 OpenAI 엔드포인트
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+# (옵션) OpenRouter로 교체할 경우를 위해 남겨둔 설정
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -24,8 +29,18 @@ OPENROUTER_SITE = os.getenv("OPENROUTER_SITE_URL", "")
 OPENROUTER_TITLE = os.getenv("OPENROUTER_TITLE", "combined-feedback")
 
 _client: Optional[OpenAI] = None
-if OPENROUTER_API_KEY:
+_llm_model: str = OPENAI_MODEL
+_llm_headers = {}
+if OPENAI_API_KEY:
+    _client = OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_BASE_URL or None)
+    _llm_model = OPENAI_MODEL
+elif OPENROUTER_API_KEY:
     _client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY)
+    _llm_model = OPENROUTER_MODEL
+    _llm_headers = {
+        "HTTP-Referer": OPENROUTER_SITE,
+        "X-Title": OPENROUTER_TITLE,
+    }
 
 
 def _ensure_voice_analysis(stt_result: Dict[str, Any]) -> Dict[str, Any]:
@@ -204,22 +219,19 @@ def generate_combined_feedback_report(
 ) -> Dict[str, Any]:
     """영상+음성 통합 LLM 리포트 생성 및 저장 (점수 포함)."""
     if not _client:
-        raise RuntimeError("OPENROUTER_API_KEY가 설정되지 않았습니다.")
+        raise RuntimeError("OPENAI_API_KEY 또는 OPENROUTER_API_KEY가 설정되지 않았습니다.")
 
     stt_result = _ensure_voice_analysis(stt_result)
     prompt = _build_combined_prompt(video_result, stt_result)
 
     completion = _client.chat.completions.create(
-        model=OPENROUTER_MODEL,
+        model=_llm_model,
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": "당신은 발표 영상+음성 피드백을 작성하는 전문가입니다. 반드시 JSON 형식으로 응답하세요."},
             {"role": "user", "content": prompt},
         ],
-        extra_headers={
-            "HTTP-Referer": OPENROUTER_SITE,
-            "X-Title": OPENROUTER_TITLE,
-        },
+        extra_headers=_llm_headers or None,
     )
 
     raw_response = completion.choices[0].message.content

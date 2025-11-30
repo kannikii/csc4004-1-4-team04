@@ -33,7 +33,9 @@ Firebase 인증 키 파일은 보안상 Git에 올리면 안 됩니다. 배포 �
 
 | 변수명 | 값 예시 | 설명 |
 |---|---|---|
-| `OPENROUTER_API_KEY` | `sk-or-v1-...` | AI 피드백 생성용 키 |
+| `OPENAI_API_KEY` | `sk-...` | AI 피드백 생성용 키 (기본) |
+| `OPENAI_MODEL` | `gpt-4o-mini` | 사용할 OpenAI 모델 (선택) |
+| `OPENROUTER_API_KEY` | *(옵션)* | 필요 시 OpenRouter로 전환할 때 사용 |
 | `FIREBASE_PROJECT_ID` | `my-project-id` | 파이어베이스 프로젝트 ID |
 | `ALLOWED_ORIGINS` | `https://my-frontend.vercel.app` | 배포된 프론트엔드 주소 (CORS 허용) |
 | `FIREBASE_CRED_PATH` | `serviceAccountKey.json` | (방법 B 사용 시 경로 지정) |

@@ -81,7 +81,7 @@ cd BE
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-# 환경변수: FIREBASE_CRED_PATH, FIREBASE_PROJECT_ID, OPENROUTER_API_KEY 등 .env에 설정
+# 환경변수: FIREBASE_CRED_PATH, FIREBASE_PROJECT_ID, OPENAI_API_KEY 등 .env에 설정
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
