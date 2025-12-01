@@ -10,7 +10,8 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  base: '/2025-2-CSC4004-1-4-Team04/',
+  // 배포 루트 도메인에 맞춰 기본 경로를 루트로 설정
+  base: '/',
   resolve: {
     extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
     alias: {
@@ -57,7 +58,7 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    outDir: 'build',
+    outDir: 'dist',
   },
   server: {
     port: 3000,
