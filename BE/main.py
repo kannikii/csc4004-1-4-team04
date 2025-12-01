@@ -18,7 +18,7 @@ from stt_processor import (
 )
 
 from combined_feedback_generator import generate_combined_feedback_report
-from result_summary_api import router as summary_router
+from result_summary_api import router as summary_router, _compute_script_similarity
 
 # Firebase (Firestore)
 import firebase_admin
@@ -219,6 +219,32 @@ async def analyze_video_api(
         except Exception as e:
             print(f"⚠️ voice_analysis 계산 실패: {e}")
 
+        # 프로젝트에 저장된 대본과 발화 텍스트 유사도 계산 (AI 피드백 이전에 수행)
+        logic_similarity = None
+        logic_feedback = []
+        try:
+            project_ref = (
+                db.collection("users")
+                .document(user_id)
+                .collection("projects")
+                .document(project_id)
+            )
+            project_doc = project_ref.get()
+            project_data = project_doc.to_dict() or {}
+            script_text = project_data.get("scriptText") or project_data.get("script")
+            spoken_text = (
+                stt_results.get("full_text")
+                or stt_results.get("text_for_logic_analysis")
+                or stt_results.get("scriptRecognized")
+                or ""
+            )
+            if script_text:
+                logic_similarity, logic_feedback = _compute_script_similarity(script_text, spoken_text)
+                stt_results["logic_similarity"] = logic_similarity
+                stt_results["logic_feedback"] = logic_feedback
+        except Exception as e:
+            print(f"⚠️ 대본 유사도 계산 실패: {e}")
+
         # 저장용으로 간소화/정제 (Firestore 호환)
         if isinstance(gaze_results, dict) and "gaze" in gaze_results:
             # trace_sample은 길고 array 타입이 많아 문제가 될 수 있어 제거
@@ -263,6 +289,8 @@ async def analyze_video_api(
             "user_id": user_id,
             "presentation_id": base_name,
             "duration_sec": gaze_results.get("metadata", {}).get("duration_sec") or stt_results.get("duration_sec"),
+            "logic_similarity": logic_similarity,
+            "logic_feedback": logic_feedback,
             
             # AI Feedback 추가
             "final_report": feedback_data.get("content"),

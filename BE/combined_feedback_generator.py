@@ -209,6 +209,17 @@ def _extract_scores_from_markdown(md_text: str) -> Dict[str, int]:
     return scores
 
 
+def _logic_score_from_similarity(similarity: Optional[float], default: int = 20) -> int:
+    """논리 유사도(0~100)를 0~20점으로 변환."""
+    try:
+        if similarity is None:
+            return default
+        similarity = max(0.0, min(100.0, float(similarity)))
+        return int(round(similarity / 100.0 * 20))
+    except Exception:
+        return default
+
+
 def generate_combined_feedback_report(
     video_result: Dict[str, Any],
     stt_result: Dict[str, Any],
@@ -260,6 +271,14 @@ def generate_combined_feedback_report(
         print("⚠️ LLM 응답이 JSON 형식이 아닙니다. Raw text로 처리합니다.")
         feedback_md = raw_response
 
+    # 논리 점수: 유사도(0~100) 기반 변환을 우선 사용
+    logic_similarity = (
+        stt_result.get("logic_similarity")
+        or stt_result.get("analysis", {}).get("logic_similarity")
+        or stt_result.get("logic", {}).get("similarity")
+    )
+    logic_score = _logic_score_from_similarity(logic_similarity, default=logic_score)
+
     # Fallback: JSON 점수가 0이면 Markdown에서 추출 시도
     if voice_score == 0 and video_score == 0:
         print("⚠️ JSON 점수가 0입니다. Markdown에서 추출을 시도합니다.")
@@ -271,6 +290,8 @@ def generate_combined_feedback_report(
             video_gaze = extracted["video_gaze"]
             video_posture = extracted["video_posture"]
             video_gesture = extracted["video_gesture"]
+        if extracted["logic"] != 20:
+            logic_score = extracted["logic"]
 
     output_dir = Path("feedback_reports")
     output_dir.mkdir(exist_ok=True)
