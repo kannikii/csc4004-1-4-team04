@@ -1,11 +1,15 @@
 import { motion } from "motion/react";
-import { Mic, Brain, VideoIcon, FileText } from "lucide-react";
+import { Mic, Brain, VideoIcon, FileText, Download } from "lucide-react";
 import { Button } from "./ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { getPresentationDetail } from "../lib/firestore";
 import { fetchFeedbackSummary } from "../apis/feedbackSummary";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+const sampleResult = {};
 
 type Page = "home" | "record" | "results" | "mypage";
 
@@ -237,6 +241,45 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
   const [showModal, setShowModal] = useState(false);
   const [detail, setDetail] = useState<any>(null);
   const [summary, setSummary] = useState<any>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const handleDownloadPDF = async () => {
+    if (!modalRef.current) return;
+
+    try {
+      const canvas = await html2canvas(modalRef.current, {
+        scale: 2, // 고해상도
+        useCORS: true,
+        backgroundColor: "#ffffff",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF("p", "mm", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth;
+      const imgHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // 첫 페이지
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pdfHeight;
+
+      // 내용이 길면 페이지 추가
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save("AI_Feedback_Report.pdf");
+    } catch (err) {
+      console.error("PDF Download failed:", err);
+    }
+  };
 
   useEffect(() => {
     const loadDetail = async () => {
@@ -729,20 +772,35 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[80vh] overflow-auto shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b">
+            <div className="flex items-center justify-between px-6 py-4 border-b sticky top-0 bg-white z-10">
               <div className="flex items-center gap-2 text-slate-900">
                 <FileText className="w-5 h-5" />
                 <span className="font-semibold">AI 피드백</span>
               </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-slate-500 hover:text-slate-800"
-              >
-                닫기
-              </button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                  className="flex items-center gap-2 text-amber-600 border-amber-200 hover:bg-amber-50"
+                >
+                  <Download className="w-4 h-4" />
+                  PDF 다운로드
+                </Button>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-slate-500 hover:text-slate-800 p-2"
+                >
+                  닫기
+                </button>
+              </div>
             </div>
 
-            <div className="p-8">
+            <div className="p-8" ref={modalRef}>
+              <div className="mb-6 text-center border-b pb-6">
+                <h2 className="text-3xl font-extrabold text-slate-900 mb-2">발표 분석 보고서</h2>
+                <p className="text-slate-500">AI Coach가 분석한 상세 피드백입니다.</p>
+              </div>
               <article className="prose prose-sm max-w-none prose-slate">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -755,13 +813,13 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
                     ),
                     h2: ({ node, ...props }) => (
                       <h2
-                        className="text-xl font-bold text-slate-800 mt-6 mb-3 flex items-center gap-2"
+                        className="text-xl font-bold text-slate-800 mt-8 mb-4 flex items-center gap-2 bg-slate-50 p-2 rounded-lg border-l-4 border-amber-400"
                         {...props}
                       />
                     ),
                     h3: ({ node, ...props }) => (
                       <h3
-                        className="text-lg font-semibold text-slate-800 mt-4 mb-2"
+                        className="text-lg font-semibold text-slate-800 mt-6 mb-3"
                         {...props}
                       />
                     ),
@@ -770,6 +828,32 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
                         className="text-slate-600 leading-relaxed mb-4"
                         {...props}
                       />
+                    ),
+                    table: ({ node, ...props }) => (
+                      <div className="overflow-x-auto my-6 rounded-lg border border-slate-200 shadow-sm">
+                        <table className="w-full text-sm text-left text-slate-600" {...props} />
+                      </div>
+                    ),
+                    thead: ({ node, ...props }) => (
+                      <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200" {...props} />
+                    ),
+                    th: ({ node, ...props }) => (
+                      <th className="px-6 py-3 font-bold" {...props} />
+                    ),
+                    td: ({ node, ...props }) => (
+                      <td className="px-6 py-4 border-b border-slate-100 last:border-0" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="list-disc list-outside ml-5 mb-4 text-slate-600" {...props} />
+                    ),
+                    ol: ({ node, ...props }) => (
+                      <ol className="list-decimal list-outside ml-5 mb-4 text-slate-600" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="mb-1" {...props} />
+                    ),
+                    blockquote: ({ node, ...props }) => (
+                      <blockquote className="border-l-4 border-slate-300 pl-4 italic text-slate-500 my-4" {...props} />
                     ),
                   }}
                 >
