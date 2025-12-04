@@ -503,9 +503,14 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
               <h3 className="text-slate-900 text-lg font-semibold mb-3">
                 영상 기반 피드백 요약
               </h3>
-              <p className="text-slate-700 whitespace-pre-line">
-                {video.feedback_preview}
-              </p>
+              <div className="space-y-2">
+                {video.feedback_preview?.split("/").map((item: string, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 text-slate-700">
+                    <span className="text-sky-500 font-bold mt-0.5">✔</span>
+                    <span className="leading-relaxed">{item.trim()}</span>
+                  </div>
+                )) || <p className="text-slate-500">분석 결과가 없습니다.</p>}
+              </div>
             </div>
 
             {/* 세부 분석 6개 카드 */}
