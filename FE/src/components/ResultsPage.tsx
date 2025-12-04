@@ -796,64 +796,83 @@ export function ResultsPage({ user, results, onNavigate }: ResultsPageProps) {
               </div>
             </div>
 
-            <div className="p-8" ref={modalRef}>
-              <div className="mb-6 text-center border-b pb-6">
-                <h2 className="text-3xl font-extrabold text-slate-900 mb-2">발표 분석 보고서</h2>
-                <p className="text-slate-500">AI Coach가 분석한 상세 피드백입니다.</p>
+            <div className="p-8" ref={modalRef} style={{ backgroundColor: "#ffffff", fontFamily: "sans-serif" }}>
+              <div className="mb-6 text-center pb-6" style={{ borderBottom: "1px solid #e2e8f0" }}>
+                <h2 className="text-3xl font-extrabold mb-2" style={{ color: "#0f172a" }}>발표 분석 보고서</h2>
+                <p style={{ color: "#64748b" }}>AI Coach가 분석한 상세 피드백입니다.</p>
               </div>
-              <article className="prose prose-sm max-w-none prose-slate">
+              <article style={{ color: "#334155", fontSize: "0.875rem", lineHeight: "1.625" }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     h1: ({ node, ...props }) => (
                       <h1
-                        className="text-2xl font-bold text-slate-900 mt-8 mb-4 pb-2 border-b border-slate-200"
+                        className="text-2xl font-bold mt-8 mb-4 pb-2"
+                        style={{ color: "#0f172a", borderBottom: "1px solid #e2e8f0" }}
                         {...props}
                       />
                     ),
                     h2: ({ node, ...props }) => (
                       <h2
-                        className="text-xl font-bold text-slate-800 mt-8 mb-4 flex items-center gap-2 bg-slate-50 p-2 rounded-lg border-l-4 border-amber-400"
+                        className="text-xl font-bold mt-8 mb-4 flex items-center gap-2 p-2 rounded-lg"
+                        style={{ color: "#1e293b", backgroundColor: "#f8fafc", borderLeft: "4px solid #fbbf24" }}
                         {...props}
                       />
                     ),
                     h3: ({ node, ...props }) => (
                       <h3
-                        className="text-lg font-semibold text-slate-800 mt-6 mb-3"
+                        className="text-lg font-semibold mt-6 mb-3"
+                        style={{ color: "#1e293b" }}
                         {...props}
                       />
                     ),
                     p: ({ node, ...props }) => (
                       <p
-                        className="text-slate-600 leading-relaxed mb-4"
+                        className="mb-4"
+                        style={{ color: "#475569", lineHeight: "1.625" }}
                         {...props}
                       />
                     ),
+                    strong: ({ node, ...props }) => (
+                      <strong style={{ color: "#0f172a", fontWeight: "600" }} {...props} />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em style={{ fontStyle: "italic" }} {...props} />
+                    ),
+                    code: ({ node, ...props }) => (
+                      <code style={{ backgroundColor: "#f1f5f9", padding: "0.2em 0.4em", borderRadius: "0.25rem", fontSize: "0.875em", fontFamily: "monospace", color: "#0f172a" }} {...props} />
+                    ),
                     table: ({ node, ...props }) => (
-                      <div className="overflow-x-auto my-6 rounded-lg border border-slate-200 shadow-sm">
-                        <table className="w-full text-sm text-left text-slate-600" {...props} />
+                      <div className="overflow-x-auto my-6 rounded-lg shadow-sm" style={{ border: "1px solid #e2e8f0" }}>
+                        <table className="w-full text-sm text-left" style={{ color: "#475569", borderCollapse: "collapse" }} {...props} />
                       </div>
                     ),
                     thead: ({ node, ...props }) => (
-                      <thead className="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200" {...props} />
+                      <thead className="text-xs uppercase" style={{ color: "#334155", backgroundColor: "#f8fafc", borderBottom: "1px solid #e2e8f0" }} {...props} />
                     ),
                     th: ({ node, ...props }) => (
                       <th className="px-6 py-3 font-bold" {...props} />
                     ),
                     td: ({ node, ...props }) => (
-                      <td className="px-6 py-4 border-b border-slate-100 last:border-0" {...props} />
+                      <td className="px-6 py-4" style={{ borderBottom: "1px solid #f1f5f9" }} {...props} />
                     ),
                     ul: ({ node, ...props }) => (
-                      <ul className="list-disc list-outside ml-5 mb-4 text-slate-600" {...props} />
+                      <ul className="list-disc list-outside ml-5 mb-4" style={{ color: "#475569" }} {...props} />
                     ),
                     ol: ({ node, ...props }) => (
-                      <ol className="list-decimal list-outside ml-5 mb-4 text-slate-600" {...props} />
+                      <ol className="list-decimal list-outside ml-5 mb-4" style={{ color: "#475569" }} {...props} />
                     ),
                     li: ({ node, ...props }) => (
                       <li className="mb-1" {...props} />
                     ),
                     blockquote: ({ node, ...props }) => (
-                      <blockquote className="border-l-4 border-slate-300 pl-4 italic text-slate-500 my-4" {...props} />
+                      <blockquote className="pl-4 italic my-4" style={{ borderLeft: "4px solid #cbd5e1", color: "#64748b" }} {...props} />
+                    ),
+                    a: ({ node, ...props }) => (
+                      <a style={{ color: "#2563eb", textDecoration: "underline" }} {...props} />
+                    ),
+                    hr: ({ node, ...props }) => (
+                      <hr className="my-8" style={{ borderTop: "1px solid #e2e8f0" }} {...props} />
                     ),
                   }}
                 >
